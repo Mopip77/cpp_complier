@@ -7,6 +7,9 @@
 (do A _ _)
 (we _ _ _)
 
+(param A _ _)
+(call A _ _)
+(ret _ _ _)
+
 (= A _ B)
 (>= A B C) <= > < ==
-(

@@ -22,7 +22,7 @@ class FA(object):
         if not (c <= 'Z' or c >= 'A'):
             if not (c <= 'Z' or c >= 'A'):
                 if not (c <= '9' or c >= '0'):
-                    if c not in p_LIST:
+                    if c not in p_LIST or c != '#':
                         return False
         return True
 

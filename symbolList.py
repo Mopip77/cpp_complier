@@ -1,11 +1,17 @@
 
 
+class TmpValue(object):
+    def __init__(self):
+        self.type = None
+        self.
+
 class FuncList(object):
     def __init__(self):
         self.offset = 2
         self.paramNum = 0
         self.paramList = []
         self.entry = 0
+        self.nextLevelSL = None
 
 
 class SymbolItem(object):
@@ -17,14 +23,32 @@ class SymbolItem(object):
 
 
 class SymbolList(object):
+    offsetDict = {
+        'int': 2,
+        'float': 4,
+        'char': 1,
+        'bool': 1,
+    }
     def __init__(self, level):
         self.level = level
-        self.nextLevelSL = None
-        self.offset = 3
+        self.offset = level + 3
+        self.len = 0
+        self.activeItem = None
         self.curVarType = None
         self.curVarCat = None
-        self.varStack = []
         self.symbolList = []
+        self.nextLevelSL = None
+
+    def fill_info_and_push_list(self):
+        """
+        将当前的符号项的type,cat,addr信息填完后入符号表
+        """
+        self.activeItem.type = self.curVarType
+        self.activeItem.cat = self.curVarCat
+        if self.curVarCat != 'f':
+            self.activeItem.addr = (self.level, self.offset)
+            self.offset += self.offsetDict[self.curVarType]
+        self.symbolList.append(self.activeItem)
 
 
 class SymbolListSystem(object):
@@ -39,7 +63,7 @@ class SymbolListSystem(object):
         """
         findStack = []
         if level == 'cur':
-            findStack = self.activeSL
+            findStack = [self.activeSL]
         elif level == 'all':
             findStack = self.levelStack
         else:
@@ -53,9 +77,20 @@ class SymbolListSystem(object):
         return False
 
     def create_next_level(self):
-        curLevel = self.levelStack[-1].level
-        nextLevelSL = SymbolList(curLevel)
-        self.levelStack[-1].nextLevelSL = nextLevelSL
+        curLevel = self.activeSL.level
+        nextLevelSL = SymbolList(curLevel + 1)
+        # 0级,当前函数生成addr并指向下一级
+        if curLevel == 0:
+            funcItem = self.activeSL.symbolList[-1]
+            funcItem.addr = FuncList()
+            funcItem.addr.level = curLevel + 1
+            funcItem.addr.len = funcItem.addr.level + 3
+            funcItem.addr.nextLevelSL = nextLevelSL
+
+        else:
+        # 其他级,当前活动表指向下一级
+            self.levelStack[-1].nextLevelSL = nextLevelSL
+
         self.levelStack.append(nextLevelSL)
         self.activeSL = self.levelStack[-1]
 
@@ -63,25 +98,9 @@ class SymbolListSystem(object):
         self.levelStack.pop()
         self.activeSL = self.levelStack[-1]
 
-    def fill_list_from_stack(self, stacktype):
-        if stacktype == 'var':
-            while self.activeSL.varStack.__len__():
-                var = self.activeSL.varStack[0]
-                self.activeSL.varStack = self.activeSL.varStack[1:]
-                var.addr = (self.activeSL.level, self.activeSL.offset)
-                self.activeSL.offset += type_len(var.type)
-                self.activeSL.symbolList.append(var)
-        elif stacktype == 'param':
-            # 反填函数形参个数
-            curFuncItem = self.levelStack[-2].symbolList[-1]
-            curFuncItem.addr.paramNum = self.activeSL.varStack.__len__()
-            while self.activeSL.varStack.__len__():
-                var = self.activeSL.varStack[0]
-                self.activeSL.varStack = self.activeSL.varStack[1:]
-                var.addr = (self.activeSL.level, self.activeSL.offset)
-                self.activeSL.offset += type_len(var.type)
-                self.activeSL.symbolList.append(var)
-                curFuncItem.addr.paramList.append(var)
+    def fill_param_in_funclist(self):
+        funlist = self.levelStack[-2].symbolList[-1].addr
+        for param in self.activeSL.symbolList:
+            funlist.paramList.append(param)
+            funlist.paramNum += 1
 
-
-    def 

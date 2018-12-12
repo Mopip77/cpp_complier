@@ -1,61 +1,85 @@
 from config import *
 from fa import AllFA
-
+from symbolList import SymbolListSystem, SymbolItem
+from myerror import ReDefined, UnDefined
 
 class CiFa(AllFA):
     log_path = 'result.txt'
     
 
     def __init__(self, startstatus, status, dervedict, endstatus, filename):
-        checkingStr = self._load_content_from_file(filename)
+        checkingStr = self._load_content_from_file(filename) + '#'
         super(CiFa, self).__init__(startstatus, status, dervedict, endstatus,
                                    checkingStr)
         self.symbolList = {
-            'i': [],  # 标识符
             'C': [],  # 字符
             'S': [],  # 字符串
             'c': [],  # 常数
             'k': k_LIST,  # 关键字
             'p': p_LIST,  # 界符
+            'end': ['#'], # 符号串结束
         }
         self.guiyueList = GUIYUE_LIST
         self.tokenList = []
+        self.SL = SymbolListSystem()
 
     def _load_content_from_file(self, filename):
         with open(filename, 'r') as f:
             return f.read()
 
-    def add_to_symbol_list(self, Str):
+    def add_to_symbol_list(self, Str, identAssign=True):
         """
         将当前字符串加到表中，返回token
+        identAssign 表示标识符是声明False还是赋值True
         """
         # 当前串的类型
         c = self.guiyueList[self.curStus]
+        # 接受#, 结束状态
+        if c == 'end':
+            return ('end', 0)
         # 当前状态是2的时候可能是关键字
         if self.curStus == 2 and Str in self.symbolList['k']:
             return ('k', self.symbolList['k'].index(Str))
-        # 其他类型
-        if Str not in self.symbolList[c]:
-            self.symbolList[c].append(Str)
-        return (c, self.symbolList[c].index(Str))
+        # 其他非标识符类型
+        if c != 'i':
+            if Str not in self.symbolList[c]:
+                self.symbolList[c].append(Str)
+            return (c, self.symbolList[c].index(Str))
+        else:
+            # 标识符有两种情况
+            # 1.声明, 需要检查本代码块是否有重复的声明
+            if identAssign is False:
+                if self.SL.find(Str, 'cur') is not False:
+                    raise ReDefined(Str)
+                return ('i', SymbolItem(Str, None, None, None))
+            # 2.赋值, 需要找到最近的该标识符位置
+            else:
+                si = self.SL.find(Str, 'all')
+            if si is not False:
+                return ('i', si)
+            else:
+                raise UnDefined(Str)
 
     def _save_token_to_file(self):
         with open(CiFa.log_path, 'w') as f:
             for token in self.tokenList:
                 name = token[0]
                 pos = token[1]
-                f.write('{:<10}{}\n'.format(self.symbolList[name][pos], token))
+                if name == 'i':
+                    f.write('{:<10}\n'.format(pos.name))
+                else:
+                    f.write('{:<10}{}\n'.format(self.symbolList[name][pos], token))
 
-    def get_next_token(self):
+    def get_next_token(self, identAssign=True):
         """
         返回下一个token串，若识别串读完则返回False,异常抛出到run函数去处理
         """
-        if self.curPos >= self.strLen:
+        if self.curPos > self.strLen:
             return False
         try:
             self.curStus = 1
             value = self.get_next_str()
-            token = self.add_to_symbol_list(value)
+            token = self.add_to_symbol_list(value, identAssign=identAssign)
             return token
         except Exception as e:
             raise e

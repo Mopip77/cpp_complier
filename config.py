@@ -4,7 +4,7 @@ p_LIST = [
     ')', '[', ']'
 ]
 # 关键字
-k_LIST = ['int', 'main', 'void', 'if', 'else', 'char', 'float', 'while', 'return']
+k_LIST = ['int', 'void', 'if', 'else', 'char', 'float', 'while', 'return']
 
 # 整体自动机调用数字自动机状态名
 MATH_CONDITION = 'MFA'
@@ -14,12 +14,12 @@ ALL_STARTSTATUS = 1
 
 ALL_STATUS = [
     1, 2, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-    24, 25, 26, 27, 28, 29
+    24, 25, 26, 27, 28, 29,33
 ]
 
 ALL_ENDSTATUS = [
     2, 4, 5, 6, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,
-    29
+    29,33
 ]
 
 # l -> letter, d -> 数字, n -> 空格回车
@@ -45,6 +45,7 @@ ALL_DERVEDICT = {
         ')': 27,
         '[': 28,
         ']': 29,
+        '#': 33,
     },
     2: {
         'l': 2,
@@ -102,6 +103,7 @@ GUIYUE_LIST = {
     30: 'c',
     31: 'c',
     32: 'c',
+    33: 'end',
 }
 
 # math automachine

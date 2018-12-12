@@ -15,6 +15,16 @@ class SEMErr(Exception):
         err = "[*]捕获异常,语义栈运算成员不够"
         super(SEMErr, self).__init__(err)
 
+class ReDefined(Exception):
+    def __init__(self, Char):
+        err = "[*]捕获异常,当前字符{}重定义".format(Char)
+        super(ReDefined, self).__init__(err)
+
+class UnDefined(Exception):
+    def __init__(self, Char):
+        err = "[*]捕获异常,当前字符{}未定义".format(Char)
+        super(UnDefined, self).__init__(err)
+
 
 class err0(Exception):
     def __init__(self):
