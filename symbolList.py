@@ -3,7 +3,6 @@
 class TmpValue(object):
     def __init__(self):
         self.type = None
-        self.
 
 class FuncList(object):
     def __init__(self):
@@ -24,8 +23,8 @@ class SymbolItem(object):
 
 class SymbolList(object):
     offsetDict = {
-        'int': 2,
-        'float': 4,
+        'int': 4,
+        'float': 8,
         'char': 1,
         'bool': 1,
     }
@@ -65,7 +64,7 @@ class SymbolListSystem(object):
         if level == 'cur':
             findStack = [self.activeSL]
         elif level == 'all':
-            findStack = self.levelStack
+            findStack = self.levelStack.reverse()
         else:
             # 报错
             pass
