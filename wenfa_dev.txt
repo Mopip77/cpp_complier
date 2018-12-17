@@ -1,0 +1,97 @@
+程序开始时初始化标识符总表类
+
+<源程序> -> <类型>1<标识符><是否函数><源程序>|空
+1:设置当前变量类型
+
+
+
+<是否函数>->(3<形参列表>9){<语句列表>}5 | 8<变量列表><赋值语句>
+3:设置当前变量为函数种类，活动层级+1,实例化下一符号表层级,入符号表层级栈
+5:活动层级-1,弹出层级栈顶
+9:将活动符号表中形参依次填入函数表中
+
+
+<形参列表>-><类型>7<标识符>8<形参列表>|,<形参列表>|空
+7:设置当前形参类型,种类
+8:当前活动标识符填信息入栈
+
+
+
+<语句列表> -> 空|
+            <函数标识符>(<有无参数>|
+            <非函数标识符>=<运算表达式>;<语句列表>|
+            return <运算表达式>;<语句列表>|
+            <类型>1<标识符>8<变量列表><赋值语句><语句列表>|
+            if (<运算表达式><逻辑运算符><运算表达式>) {4<语句列表>}5 <有无else> |
+            while(<运算表达式><逻辑运算符><运算表达式>) {4<语句列表>}5
+
+4:活动层级+1,实例化下一符号表层级,入符号表层级栈
+
+<有无参数>->)<语句结尾>|<运算表达式> <变量列表>）<语句结尾>
+<语句结尾> -> ;<语句列表>
+
+<逻辑运算符> -> > | < | >= | <= | ==
+<有无else> -> else {4<语句列表>}5 | 空
+
+
+<类型> -> int| char| float| bool
+<变量列表> -> ,<标识符>8<变量列表> | 空
+
+<赋值语句> -> =<运算表达式>; | ;
+
+
+<运算表达式> -> <项> | <运算表达式><+-><项><运算表达式_>
+<项> -> <因子> | <项><*/><因子>
+<因子> -><运算对象>| (<运算表达式>)
+<运算对象>-><函数标识符>（<有无参数_1>|<非函数标识符>|<常数>
+<有无参数_1> -> ) | <运算表达式><有无参数_2>)
+<有无参数_2> -> ,<运算表达式> | 空
+
+终极符: <函数标识符><常数><类型><标识符><非函数标识符>
+
+
+
+
+
+
+<source program> -> <type><identifier><whether function><source program>|空
+<whether function>->(<form list>){<statement list>} | <variable list><assignment statement>
+
+
+<form list>-><type><identifier><form list>|,<form list>|空
+
+
+<statement list> -> 空|
+<function identifier>(<with or without parameters>|
+<non-function identifier>=<operation expression>;<statement list>|
+return <operation expression>;<statement list>|
+<type><identifier><variable list><assignment statement><statement list>|
+if (<operation expression><logical operator><operation expression>) {<statement list>} <with or without else> |
+while(<operation expression><logical operator><operation expression>) {<statement list>} |
+
+<with or without parameters>->)<End of statement>|<operation expression> <variable list>）<End of statement>
+<End of statement> -> ;<statement list>
+
+<logical operator> -> > | < | >= | <= | ==
+<with or without else> -> else {<statement list>} | 空
+
+
+<type> -> int| char| float| bool
+<variable list> -> ,<identifier> <variable list> | 空
+
+<assignment statement> -> =<operation expression>; | ;
+
+
+<operation expression> -> <item><operation expression_>
+<item> ->  <factor><item_>
+<operation expression_> -> <+-><item><operation expression_> | 空
+<item_> -> <*/> <factor><item_> | 空
+ <factor> -><Operation object>| (<operation expression>)
+<Operation object>-><function identifier>（<with or without parameters>|<non-function identifier>|<constant>
+
+终极符: <function identifier><constant><type><identifier><non-function identifier>
+
+
+
+
+

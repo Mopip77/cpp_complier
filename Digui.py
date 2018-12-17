@@ -197,6 +197,7 @@ class Recursion(object):
         elif(self.jud_type()):
             # 1
             self.cifa.SL.activeSL.curVarType = self.token_to_word()
+            self.cifa.SL.activeSL.curVarCat = 'v'
 
             self.get_next_token(identAssign=False)
             if(self.jud_ident()):
