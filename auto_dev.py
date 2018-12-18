@@ -4,7 +4,11 @@ import os
 from cifa import CiFa
 from config import *
 from myerror import err1, InvalidSymbol, SEMErr
-from tmpvalue import TmpValue
+# from tmpvalue import TmpValue
+
+
+class TmpValue(object):
+    pass
 
 
 class DerveDictGererator(object):
@@ -16,20 +20,27 @@ class DerveDictGererator(object):
         self.stusNum = 0
         # 外部输入，这里没分离
         # 输入产生式
-        self.chanshenshi = {
-            'E': [['E', 'w0', ('T', ('gen', 'w0'))], ['T']],
-            'T': [['T', 'w1', ('F', ('gen', 'w1'))], ['F']],
-            'F': [[('i', ('push', 'i'))], ['(', 'E', ')']]
-        }
-        # 输入非终极符, 起始符号, 结束符号
-        self.Vn = {'E', 'T', 'F'}
-        self.startVn = 'E'
-        self.endChar = '#'
+        # self.chanshenshi = {
+        #     '运算表达式': [['项'], ['运算表达式', 'w0', ('项', ('gen', 'w0'))]],
+        #     '项': [['因子'], ['项', 'w1', ('因子', ('gen', 'w1'))]],
+        #     '因子': [['运算对象'], ['(', '运算表达式', ')']],
+        #     '运算对象': [[('函数标识符', ('push', 'i')), '(', ')'], [('非函数标识符', ('push', 'i'))], [('常数', ('push', 'i'))]]    
+        # }
+        # # 输入非终极符, 起始符号, 结束符号
+        # self.Vn = {'运算表达式', '项', '因子', '运算对象'}
+        # self.startVn = '运算表达式'
+        # self.endChar = '#'
+        self.chanshenshi = yufa_1['chanshenshi']
+        self.Vn = yufa_1['vn']
+        self.startVn = yufa_1['startVn']
+        self.endChar = yufa_1['endChar']
         # 加入全局起始状态
         self.topStus = '#S'
         # 生成目标结果
         self.derveDict = {}  # 推断表
         self.guiyueListForSLR = {}  # 规约表给(SLR 用) (状态, 产生式元素的个数)
+
+        self.__css_change_to_LR_format()
 
         self.Vt = self.__get_Vt()
 
@@ -46,6 +57,31 @@ class DerveDictGererator(object):
         # 可规约状态集合
         self.guiyueableStusDict = {}
 
+    def __css_change_to_LR_format(self):
+        """
+        将产生式变成符合LR格式的文法,即动作在最后
+        """
+        tmpNum = 0
+        tmpStus = 'tmpStus_{}'
+        tmpStusReferDict = {}
+        _tmpDict = {} # 扩展出来的文法,最后加入self.chanshenshi
+        for stus in self.chanshenshi:
+            for css in self.chanshenshi[stus]:
+                for i in range(0, css.__len__()):
+                    if i != css.__len__() - 1 and isinstance(css[i], tuple):
+                        item = css[i]
+                        if not item in tmpStusReferDict:
+                            _tmp = tmpStus.format(tmpNum)
+                            tmpStusReferDict[item] = _tmp
+                            tmpNum += 1
+                            _tmpDict[_tmp] = [[item]]
+                            self.Vn.add(_tmp)
+                        else:
+                            _tmp = tmpStusReferDict[item]
+                        css.insert(i, _tmp)
+                        css.remove(item)
+
+        self.chanshenshi.update(_tmpDict)
 
     def __get_stus_name(self, stus):
         if isinstance(stus, tuple):
@@ -276,8 +312,8 @@ class DerveDictGererator(object):
                 if endChar not in self.derveDict[curStusNum]:
                     self.derveDict[curStusNum][endChar] = ('r', guiyueStus)
                 else:
-                    print('规约移进冲突')
-                    os._exit(0)
+                    print(curStusNum, guiyueStus, endChar)
+                    # os._exit(0)
         return curStusNum
 
     def __expand_css(self, curCssList):
@@ -377,7 +413,7 @@ class SLR(DerveDictGererator):
         super(SLR, self).__init__()
         self.generate()
         self.cifa = CiFa(ALL_STARTSTATUS, ALL_STATUS, ALL_DERVEDICT,
-                         ALL_ENDSTATUS, '../v.cpp')
+                         ALL_ENDSTATUS, 'v.cpp')
         self.stack = []
         self.token = tuple()
 
@@ -395,8 +431,10 @@ class SLR(DerveDictGererator):
         变换当前字符 +- -> w0  */ -> w1 运算符 -> i
         """
         # 标识符常数
-        if self.token[0] == 'c' or self.token[0] == 'i':
-            return 'i'
+        if self.token[0] == 'c':
+            return '常数'
+        elif self.token[0] == 'i':
+            return '函数标识符'
         # 界符
         elif self.token[0] == 'p':
             symbol = self.cifa.symbolList[self.token[0]][self.token[1]]
@@ -440,13 +478,14 @@ class SLR(DerveDictGererator):
         # action
         try:
             css = self.get_num_chanshenshi(nS[1])
-            action = self.get_num_chanshenshi(nS[1])[-1][1]
-            if action[0] == 'push':
-                cal_obj = self.stack[-1][0]
-                self.SEM.append(cal_obj)
-            elif action[0] == 'gen':
-                symbol = self.stack[-2][0]
-                self.__generate_qurt(symbol)
+            if isinstance(css[-1][1], tuple):
+                action = css[-1][1]
+                if action[0] == 'push':
+                    cal_obj = self.stack[-1][0]
+                    self.SEM.append(cal_obj)
+                elif action[0] == 'gen':
+                    symbol = self.stack[-2][0]
+                    self.__generate_qurt(symbol)
         except:
             pass
 
@@ -462,6 +501,7 @@ class SLR(DerveDictGererator):
             curStus = self.stack[-1][1]
 
             w = self.__transCurSymbol()
+            print(w)
 
             if curStus is True:
                 for i in self.QT:

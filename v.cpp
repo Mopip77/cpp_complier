@@ -12,8 +12,10 @@ int main(){
 
 	while (y >= 0){
 		if (y > 10){
+			int abc;
 			y = y - 4;
 		}else{
+			char a = 'd';
 			y = y - 2;
 		}
 	}

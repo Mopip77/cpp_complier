@@ -36,7 +36,7 @@ class SymbolList(object):
         self.curVarType = None
         self.curVarCat = None
         self.symbolList = []
-        self.nextLevelSL = None
+        self.nextLevelSL = []
 
     def fill_info_and_push_list(self):
         """
@@ -64,7 +64,7 @@ class SymbolListSystem(object):
         if level == 'cur':
             findStack = [self.activeSL]
         elif level == 'all':
-            findStack = self.levelStack.reverse()
+            findStack = self.levelStack[::-1]
         else:
             # 报错
             pass
@@ -88,7 +88,7 @@ class SymbolListSystem(object):
 
         else:
         # 其他级,当前活动表指向下一级
-            self.levelStack[-1].nextLevelSL = nextLevelSL
+            self.levelStack[-1].nextLevelSL.append(nextLevelSL)
 
         self.levelStack.append(nextLevelSL)
         self.activeSL = self.levelStack[-1]
