@@ -30,6 +30,22 @@ class MiddleCode(object):
         self.item2 = item2
         self.res = res
 
+    # for test
+    def __str__(self):
+        if isinstance(self.item1, SymbolItem) or isinstance(self.item1, TempVar):
+            item1 = self.item1.name
+        else:
+            item1 = self.item1
+        if isinstance(self.item2, SymbolItem) or isinstance(self.item2, TempVar):
+            item2 = self.item2.name
+        else:
+            item2 = self.item2
+        if isinstance(self.res, SymbolItem) or isinstance(self.res, TempVar):
+            res = self.res.name
+        else:
+            res = self.res
+        return "%s %s %s %s" % (self.opt, item1, item2, res)
+
 
 class LRDerveDictGerenator(object):
     """
@@ -161,6 +177,10 @@ class LRDerveDictGerenator(object):
             solved_vn_num_cur_turn = False
             for stus in first.keys():
                 if stus not in finished_vn:
+                    # 这里需要删除self.firstCharSet[stus]['vn']中的产生式,如果直接删除遍历会跳过
+                    # 用一个栈先代替
+                    _tmpCssStack = []
+                    _tmpCssStack += first[stus]['vn']
                     for css in first[stus]['vn']:
                         # 遍历vn
                         pos = 0
@@ -175,7 +195,8 @@ class LRDerveDictGerenator(object):
                                         first[stus]['first'].update(first[css[i]]['first'])
                                     else:
                                         first[stus]['first'].add(css[i])
-                                first[stus]['vn'].remove(css)
+                                _tmpCssStack.remove(css)
+                                # first[stus]['vn'].remove(css)
                                 finished_vn.add(stus)
 
                         # 如果vn已经推出了的, 并且不可推出空
@@ -210,6 +231,8 @@ class LRDerveDictGerenator(object):
                                     #下一个不能推出来
                                     else:
                                         break
+                    # 重置vn集合
+                    first[stus]['vn'] = _tmpCssStack
 
         return first
 
@@ -446,6 +469,12 @@ class LR(LRDerveDictGerenator):
         self.stusStack = []
         self.token = tuple()
 
+        # 四元式
+        self.tmpVarFormat = "t{}"
+        self.tmpNum = 1
+        self.SEMStack = []
+        self.QT = []
+
     def __get_next_token(self):
         self.token = self.cifa.get_next_token()
 
@@ -488,6 +517,11 @@ class LR(LRDerveDictGerenator):
         """
         执行语义动作,传入动作集合
         """
+        def get_a_tmp_value():
+            _tmp = TempVar(self.tmpVarFormat.format(self.tmpNum))
+            self.tmpNum += 1
+            return _tmp
+
         for act in actions:
             if act == 1:
                 self.cifa.SL.activeSL.curVarType = self.stusStack[-1][0]
@@ -509,6 +543,68 @@ class LR(LRDerveDictGerenator):
             elif act == 10:
                 if self.cifa.SL.find(self.token[1].name, 'cur') is not False:
                     raise ReDefined(self.token[1].name)
+            elif act == 'A':
+                self.SEMStack.append(self.stusStack[-1][0])
+            elif act == 'B':
+                funcItem = self.SEMStack.pop()
+                _tmpVar = get_a_tmp_value()
+                qt = MiddleCode("call", funcItem, None, _tmpVar)
+                self.QT.append(qt)
+                self.SEMStack.append(_tmpVar)
+            elif act == 'C':
+                retVar = self.SEMStack.pop()
+                qt = MiddleCode("ret", retVar, None, None)
+                self.QT.append(qt)
+            elif act == 'D':
+                qt = MiddleCode("ie", None, None, None)
+                self.QT.append(qt)
+            elif act == 'E':
+                qt = MiddleCode("el", None, None, None)
+                self.QT.append(qt)
+            elif act == 'F':
+                judgeVar = self.SEMStack.pop()
+                qt = MiddleCode("if", judgeVar, None, None)
+                self.QT.append(qt)
+            elif act == 'G':
+                qt = MiddleCode("wh", None, None, None)
+                self.QT.append(qt)
+            elif act == 'H':
+                item1 = self.SEMStack.pop()
+                opt = self.SEMStack.pop()
+                item2 = self.SEMStack.pop()
+                _tmpVar = get_a_tmp_value()
+                qt = MiddleCode(opt, item2, item1, _tmpVar)
+                self.QT.append(qt)
+                self.SEMStack.append(_tmpVar)
+            elif act == 'K':
+                self.SEMStack.pop()
+            elif act == 'L':
+                param = self.SEMStack.pop()
+                qt = MiddleCode("param", param, None, None)
+                self.QT.append(qt)
+            elif act == 'M':
+                judgeVar = self.SEMStack.pop()
+                qt = MiddleCode("do", judgeVar, None, None)
+                self.QT.append(qt)
+            elif act == 'N':
+                qt = MiddleCode("we", None, None, None)
+                self.QT.append(qt)
+            elif act == 'P':
+                qt = MiddleCode("pe", None, None, None)
+                self.QT.append(qt)
+            elif act == 'Q':
+                item = self.SEMStack.pop()
+                qt = MiddleCode("=", 0, None, item)
+                self.QT.append(qt)
+            elif act == 'R':
+                value = self.SEMStack.pop()
+                target = self.SEMStack.pop()
+                qt = MiddleCode('=', value, None, target)
+                self.QT.append(qt)
+            elif act == 'T':
+                funcName = self.SEMStack.pop()
+                qt = MiddleCode("pro", funcName, None, None)
+                self.QT.append(qt)
 
     def __guiyue(self, nS):
         """
@@ -552,6 +648,8 @@ class LR(LRDerveDictGerenator):
                 # print(w, self.token_to_word())
 
                 if curStus is True:
+                    for i in self.QT:
+                        print(i)
                     print('[*]当前识别串符合该文法')
                     return True
                 elif w not in self.derveDict[curStus].keys():
