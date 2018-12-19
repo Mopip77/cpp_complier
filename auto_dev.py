@@ -5,37 +5,45 @@ from cifa import CiFa
 from config import *
 from myerror import err1, InvalidSymbol, SEMErr, ReDefined
 from symbolList import FuncList, SymbolItem
-# from tmpvalue import TmpValue
 
 
-class TmpValue(object):
-    pass
+class TempVar(object):
+    """
+    临时变量类
+    """
+    def __init__(self, name, cat="temp"):
+        self.name = name
+        self.cat = cat
+        self._type = None
+
+    def __str__(self):
+        return "%s" % self.name
 
 
-class DerveDictGererator(object):
+class MiddleCode(object):
+    """
+    四元式类，存储自定义变量和临时变量都是存储相应类
+    """
+    def __init__(self, opt, item1=None, item2=None, res=None):
+        self.opt = opt
+        self.item1 = item1
+        self.item2 = item2
+        self.res = res
+
+
+class LRDerveDictGerenator(object):
     """
     自动生成推断表
     """
 
     def __init__(self):
+        # test用,记录读过的符号
         self.testStack = []
-        self.stusNum = 0
-        # 外部输入，这里没分离
-        # 输入产生式
-        # self.chanshenshi = {
-        #     '运算表达式': [['项'], ['运算表达式', 'w0', ('项', ('gen', 'w0'))]],
-        #     '项': [['因子'], ['项', 'w1', ('因子', ('gen', 'w1'))]],
-        #     '因子': [['运算对象'], ['(', '运算表达式', ')']],
-        #     '运算对象': [[('函数标识符', ('push', 'i')), '(', ')'], [('非函数标识符', ('push', 'i'))], [('常数', ('push', 'i'))]]    
-        # }
-        # # 输入非终极符, 起始符号, 结束符号
-        # self.Vn = {'运算表达式', '项', '因子', '运算对象'}
-        # self.startVn = '运算表达式'
-        # self.endChar = '#'
-        self.chanshenshi = yufa_1['chanshenshi']
-        self.Vn = yufa_1['vn']
-        self.startVn = yufa_1['startVn']
-        self.endChar = yufa_1['endChar']
+        self.stusNum = 0 # 项目集编号,每进入一个项目集+1
+        self.chanshenshi = WENFA_DICT['chanshenshi']
+        self.Vn = WENFA_DICT['vn']
+        self.startVn = WENFA_DICT['startVn']
+        self.endChar = WENFA_DICT['endChar']
         # 加入全局起始状态
         self.topStus = '#S'
         # 生成目标结果
@@ -48,8 +56,10 @@ class DerveDictGererator(object):
 
         self.firstCharSet = self.__build_first_char_set()
 
+        # 已经推出来了的状态集合 key=项目编号, value=项目集
         self.usedSetDict = {}
 
+        # 产生式中加入top推导,至于为什么要在求first集合后,我给忘了
         self.chanshenshi[self.topStus] = [[self.startVn]]
 
         # 规约表(Here用) (状态, 产生式, 编号)
@@ -86,6 +96,9 @@ class DerveDictGererator(object):
         self.chanshenshi.update(_tmpDict)
 
     def __get_stus_name(self, stus):
+        """
+        状态可能包含语义动作,这个函数返回状态名称
+        """
         if isinstance(stus, tuple):
             return stus[0]
         else:
@@ -201,16 +214,19 @@ class DerveDictGererator(object):
         return first
 
     def __get_Vt(self):
+        """
+        获取所有的终极符
+        """
         all_v = set()
         all_v.update(self.Vn)
-        for i in self.chanshenshi.values():
-            for v in i:
-                if v.__len__():
-                    all_v.update(set(v[:-1]))
-                    if isinstance(v[-1], tuple):
-                        all_v.add(v[-1][0])
+        for cssEs in self.chanshenshi.values():
+            for css in cssEs:
+                if css.__len__():
+                    all_v.update(set(css[:-1]))
+                    if isinstance(css[-1], tuple):
+                        all_v.add(css[-1][0])
                     else:
-                        all_v.add(v[-1])
+                        all_v.add(css[-1])
         all_v.add(self.endChar)
         return all_v - self.Vn
 
@@ -229,7 +245,7 @@ class DerveDictGererator(object):
 
     def __get_chanshenshi_num(self, stus, cs):
         """
-        由产生式得到编号
+        由产生式得到编号,stus是推导首产生式,cs是产生式列表
         """
         i = 0
         for g in self.guiyueList:
@@ -281,7 +297,6 @@ class DerveDictGererator(object):
                     self.get_num_chanshenshi(item[0][0])[item[0][1]])
             except IndexError:
                 # 规约状态
-                # self.guiyueableStusDict.add(item[0])
                 for endChar in item[1]:
                     if endChar not in self.derveDict[curStusNum].keys():
                         self.derveDict[curStusNum][endChar] = ('r', item[0][0])
@@ -298,13 +313,7 @@ class DerveDictGererator(object):
         for readChar in _readCharDict:
             # 派生产生式
             fir = self.__expand_css(_readCharDict[readChar])
-            # 自己到自己
-            theSameStus = True
-            for i in range(0, fir.__len__()):
-                if fir[i][0] != curStusSet[i][0]:
-                    theSameStus = False
-                    break
-            # 链接两个状态
+            # 连接下一个状态
             nextStusNum = self.__get_next_stus_set(fir)
             self.derveDict[curStusNum][readChar] = nextStusNum
 
@@ -315,17 +324,21 @@ class DerveDictGererator(object):
                 if endChar not in self.derveDict[curStusNum]:
                     self.derveDict[curStusNum][endChar] = ('r', guiyueStus)
                 else:
+                    # 这里出现了4个冲突情况,都是调用函数的时候
                     print(curStusNum, guiyueStus, endChar)
-                    # print(self.testStack)
+                    # print('规约移进冲突')
                     # os._exit(0)
         self.testStack.pop()
         return curStusNum
 
     def __expand_css(self, curCssList):
+        """
+        扩充项目集的当前读取的非终极符,返回项目集
+        """
         cssStack = []
         generStack = []
-        cssStack += curCssList
-        generStack += curCssList
+        cssStack += curCssList  # 当前项目集所有产生式
+        generStack += curCssList  # 当前项目集需要扩充的产生式
 
         while generStack.__len__():
             tmpStus = generStack.pop()
@@ -337,21 +350,22 @@ class DerveDictGererator(object):
                 continue
             else:
                 if readChar in self.Vn:
-                    # 找到此产生式的后继符
-                    # 该符号是产生式的最后一个
+                    # 找到此产生式推导出的产生式的规约符号集合
                     firstSet = set()
                     if css.__len__() == tmpStus[0][1] + 1:
+                        # 该符号是产生式的最后一个
                         firstSet.update(tmpStus[1])
                     else:
                         _nextStusSet = self.__get_stus_name(css[tmpStus[0][1] + 1])
                         if _nextStusSet in self.Vn:
                             firstSet.update(self.firstCharSet[_nextStusSet]['first'])
-                            # 如果后面是可空状态
                             if self.firstCharSet[_nextStusSet]['empty'] is True:
+                                # 如果该非终极符是可空状态
                                 pos = 1
                                 while True:
                                     pos += 1
                                     try:
+                                        # 继续找下一个
                                         _s = self.__get_stus_name(css[tmpStus[0][1] + pos])
                                     except IndexError:
                                         # 读完了,则加上tmpStus的followset
@@ -371,7 +385,7 @@ class DerveDictGererator(object):
                     # 找到所有派生出的产生式
                     for css in self.chanshenshi[readChar]:
                         if css.__len__() == 0:
-                            # cssStack.append((None, firstSet))
+                            # 当前项目集可推出空,登记到可规约状态表
                             emptyCssNum = self.__get_chanshenshi_num(readChar, css)
                             self.guiyueableStusDict[self.stusNum] = (emptyCssNum, firstSet)
                         else:
@@ -386,20 +400,24 @@ class DerveDictGererator(object):
                                         tmpSet = set()
                                         tmpSet.update(firstSet)
                                         tmpSet.update(i[1])
-                                        # firstSet.update(i[1])
                                         if i in generStack:
                                             generStack.remove(i)
+                                        # 将更新的状态放到两个栈中
                                         cssStack.insert(0, (curStus, tmpSet))
                                         generStack.insert(0, (curStus, tmpSet))
-                                        # firstSet ^= i[1]
+                                        # 移除项目集中更新前的状态
                                         cssStack.remove(i)
                                     break
                             if not curStusHasChanged:
+                                # 没更改即栈中没有,插入
                                 cssStack.insert(0, (curStus, firstSet))
                                 generStack.insert(0, (curStus, firstSet))
         return cssStack
 
     def generate(self):
+        """
+        生成LR表
+        """
         _topNum = self.__get_chanshenshi_num(self.topStus, [self.startVn])
         fir = self.__expand_css([((_topNum, 0), set(self.endChar))])
         self.__get_next_stus_set(fir)
@@ -413,9 +431,9 @@ class DerveDictGererator(object):
         del self.topStus
 
 
-class SLR(DerveDictGererator):
+class LR(LRDerveDictGerenator):
     def __init__(self):
-        super(SLR, self).__init__()
+        super(LR, self).__init__()
         self.generate()
         # while True:
         #     self.guiyueList
@@ -423,17 +441,11 @@ class SLR(DerveDictGererator):
         #     print(self.derveDict[int(s)])
         self.cifa = CiFa(ALL_STARTSTATUS, ALL_STATUS, ALL_DERVEDICT,
                          ALL_ENDSTATUS, 'v.cpp')
-        self.stack = []
+        self.stusStack = []
         self.token = tuple()
-
-        self.SEM = []
-        self.QT = []
 
     def __get_next_token(self):
         self.token = self.cifa.get_next_token()
-        # 读完
-        # if self.token is False:
-        #     self.token = self.endChar
 
     def __transCurSymbol(self):
         """
@@ -462,9 +474,6 @@ class SLR(DerveDictGererator):
                 return '<类型>'
             else:
                 return symbol
-            # else:
-            #     raise InvalidSymbol(
-            #         self.cifa.symbolList[self.token[0]][self.token[1]])
         # 结束符
         elif self.token[0] == 'end':
             return self.cifa.symbolList[self.token[0]][self.token[1]]
@@ -473,23 +482,13 @@ class SLR(DerveDictGererator):
             raise InvalidSymbol(
                 self.cifa.symbolList[self.token[0]][self.token[1]])
 
-    def __generate_qurt(self, symbol):
-        """ 
-        生成四元式
-        """
-        if self.SEM.__len__() < 2:
-            raise SEMErr
-        else:
-            y = self.SEM.pop()
-            x = self.SEM.pop()
-            b = TmpValue()
-            self.QT.append((symbol, x, y, b))
-            self.SEM.append(b)
-
     def __excute_lang_action(self, actions):
+        """
+        执行语义动作,传入动作集合
+        """
         for act in actions:
             if act == 1:
-                self.cifa.SL.activeSL.curVarType = self.stack[-1][0]
+                self.cifa.SL.activeSL.curVarType = self.stusStack[-1][0]
             elif act == 2:
                 self.cifa.SL.activeSL.curVarCat = 'v'
             elif act == 3:
@@ -499,7 +498,7 @@ class SLR(DerveDictGererator):
             elif act == 5:
                 self.cifa.SL.destory_next_level()
             elif act == 7:
-                self.cifa.SL.activeSL.curVarType = self.stack[-1][0]
+                self.cifa.SL.activeSL.curVarType = self.stusStack[-1][0]
                 self.cifa.SL.activeSL.curVarCat = 'vn'
             elif act == 8:
                 self.cifa.SL.activeSL.fill_info_and_push_list()
@@ -527,36 +526,30 @@ class SLR(DerveDictGererator):
             os._exit(0)
 
         if guiyueCount != 0:
-            self.stack = self.stack[:(-1 * guiyueCount)]
-        nS = self.derveDict[self.stack[-1][1]][guiyueName]
-        self.stack.append((guiyueName, nS))
+            self.stusStack = self.stusStack[:(-1 * guiyueCount)]
+        nS = self.derveDict[self.stusStack[-1][1]][guiyueName]
+        self.stusStack.append((guiyueName, nS))
 
     def token_to_word(self):
+        """
+        返回当前token实际的单词
+        """
         if isinstance(self.token[1], int):
             return self.cifa.symbolList[self.token[0]][self.token[1]]
         else:
             return self.token[1].name
 
     def run(self):
-        self.stack.append((self.endChar, 0))
+        self.stusStack.append((self.endChar, 0))
         self.__get_next_token()
 
-        # test
-        testStack = []
-
         while True:
-            curStus = self.stack[-1][1]
-            if curStus in [58, 60, 101, 140]:
-                print('bad...')
-            # print(self.stack)
-            # testStack.append(curStus)
+            curStus = self.stusStack[-1][1]
 
             w = self.__transCurSymbol()
             print(w, self.token_to_word())
 
             if curStus is True:
-                for i in self.QT:
-                    print(i)
                 print('[*]当前识别串符合该文法')
                 return True
             elif w not in self.derveDict[curStus].keys():
@@ -566,10 +559,10 @@ class SLR(DerveDictGererator):
                 # 压栈
                 if isinstance(nS, int):
                     if isinstance(self.token[1], int):
-                        wD = self.token_to_word()
+                        curWord = self.token_to_word()
                     else:
-                        wD = self.token[1]
-                    self.stack.append((wD, nS))
+                        curWord = self.token[1]
+                    self.stusStack.append((curWord, nS))
                     self.__get_next_token()
                 # 规约
                 else:
@@ -577,5 +570,5 @@ class SLR(DerveDictGererator):
 
 
 if __name__ == "__main__":
-    v = SLR()
+    v = LR()
     v.run()

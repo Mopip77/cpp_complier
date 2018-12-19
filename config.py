@@ -1,4 +1,4 @@
-yufa_1 = {
+WENFA_DICT = {
     'endChar': '#',
     'startVn': '<源程序>',
     'vn': {
