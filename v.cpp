@@ -15,7 +15,6 @@ int main(){
 			int abc;
 			y = y - 4;
 		}else{
-			char a = 'd';
 			y = y - 2;
 		}
 	}

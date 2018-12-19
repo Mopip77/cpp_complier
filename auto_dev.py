@@ -316,6 +316,7 @@ class DerveDictGererator(object):
                     self.derveDict[curStusNum][endChar] = ('r', guiyueStus)
                 else:
                     print(curStusNum, guiyueStus, endChar)
+                    # print(self.testStack)
                     # os._exit(0)
         self.testStack.pop()
         return curStusNum
@@ -416,7 +417,6 @@ class SLR(DerveDictGererator):
     def __init__(self):
         super(SLR, self).__init__()
         self.generate()
-        print(1)
         # while True:
         #     self.guiyueList
         #     s = input()
@@ -466,8 +466,8 @@ class SLR(DerveDictGererator):
             #     raise InvalidSymbol(
             #         self.cifa.symbolList[self.token[0]][self.token[1]])
         # 结束符
-        elif self.token == self.endChar:
-            return self.token
+        elif self.token[0] == 'end':
+            return self.cifa.symbolList[self.token[0]][self.token[1]]
         # 不接受的字符
         else:
             raise InvalidSymbol(
@@ -488,15 +488,26 @@ class SLR(DerveDictGererator):
 
     def __excute_lang_action(self, actions):
         for act in actions:
-            if act == 2:
-                self.cifa.SL.activeSL.curVarCat = 'v'
-            if act == 10:
-                if self.cifa.SL.find(self.token[1].name, 'cur') is not False:
-                    raise ReDefined(self.token[1].name)
+            if act == 1:
                 self.cifa.SL.activeSL.curVarType = self.stack[-1][0]
+            elif act == 2:
+                self.cifa.SL.activeSL.curVarCat = 'v'
+            elif act == 3:
+                self.cifa.SL.create_next_level()
+            elif act == 4:
+                self.cifa.SL.activeSL.curVarCat = 'f'
+            elif act == 5:
+                self.cifa.SL.destory_next_level()
+            elif act == 7:
+                self.cifa.SL.activeSL.curVarType = self.stack[-1][0]
+                self.cifa.SL.activeSL.curVarCat = 'vn'
             elif act == 8:
                 self.cifa.SL.activeSL.fill_info_and_push_list()
-            
+            elif act == 9:
+                self.cifa.SL.fill_param_in_funclist()
+            elif act == 10:
+                if self.cifa.SL.find(self.token[1].name, 'cur') is not False:
+                    raise ReDefined(self.token[1].name)
 
     def __guiyue(self, nS):
         """
@@ -535,6 +546,9 @@ class SLR(DerveDictGererator):
 
         while True:
             curStus = self.stack[-1][1]
+            if curStus in [58, 60, 101, 140]:
+                print('bad...')
+            # print(self.stack)
             # testStack.append(curStus)
 
             w = self.__transCurSymbol()
