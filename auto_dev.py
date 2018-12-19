@@ -3,7 +3,7 @@ sys.path.append('..')
 import os
 from cifa import CiFa
 from config import *
-from myerror import err1, InvalidSymbol, SEMErr, ReDefined
+from myerror import UnaccpetSymbol, InvalidSymbol, SEMErr, ReDefined
 from symbolList import FuncList, SymbolItem
 
 
@@ -301,8 +301,8 @@ class LRDerveDictGerenator(object):
                     if endChar not in self.derveDict[curStusNum].keys():
                         self.derveDict[curStusNum][endChar] = ('r', item[0][0])
                     else:
-                        print('规约冲突')
-                        os._exit()
+                        print('[*]规约规约冲突...')
+                        os._exit(0)
             else:
                 if readChar not in _readCharDict.keys():
                     _readCharDict[readChar] = []
@@ -326,6 +326,7 @@ class LRDerveDictGerenator(object):
                 else:
                     # 这里出现了4个冲突情况,都是调用函数的时候
                     print(curStusNum, guiyueStus, endChar)
+                    # print(self.testStack)
                     # print('规约移进冲突')
                     # os._exit(0)
         self.testStack.pop()
@@ -424,6 +425,7 @@ class LRDerveDictGerenator(object):
         # 修改完成状态
         self.derveDict[0][self.startVn] = True
         # 删除无用状态
+        del self.testStack
         del self.firstCharSet
         del self.guiyueableStusDict
         del self.stusNum
@@ -516,14 +518,10 @@ class LR(LRDerveDictGerenator):
         guiyueName = g[0]
         guiyueCount = g[1]
         # action
-        try:
-            css = self.get_num_chanshenshi(nS[1])
-            if css.__len__() and isinstance(css[-1], tuple):
-                actions = css[-1][1]
-                self.__excute_lang_action(actions)
-        except Exception as e:
-            print(e)
-            os._exit(0)
+        css = self.get_num_chanshenshi(nS[1])
+        if css.__len__() and isinstance(css[-1], tuple):
+            actions = css[-1][1]
+            self.__excute_lang_action(actions)
 
         if guiyueCount != 0:
             self.stusStack = self.stusStack[:(-1 * guiyueCount)]
@@ -540,33 +538,39 @@ class LR(LRDerveDictGerenator):
             return self.token[1].name
 
     def run(self):
-        self.stusStack.append((self.endChar, 0))
-        self.__get_next_token()
+        try:
+            self.stusStack.append((self.endChar, 0))
+            self.__get_next_token()
 
-        while True:
-            curStus = self.stusStack[-1][1]
+            while True:
+                curStus = self.stusStack[-1][1]
+                # if curStus in [58, 60, 101, 140]:
+                #     print('bad...')
+                #     print(self.stusStack)
 
-            w = self.__transCurSymbol()
-            print(w, self.token_to_word())
+                w = self.__transCurSymbol()
+                # print(w, self.token_to_word())
 
-            if curStus is True:
-                print('[*]当前识别串符合该文法')
-                return True
-            elif w not in self.derveDict[curStus].keys():
-                raise err1
-            else:
-                nS = self.derveDict[curStus][w]
-                # 压栈
-                if isinstance(nS, int):
-                    if isinstance(self.token[1], int):
-                        curWord = self.token_to_word()
-                    else:
-                        curWord = self.token[1]
-                    self.stusStack.append((curWord, nS))
-                    self.__get_next_token()
-                # 规约
+                if curStus is True:
+                    print('[*]当前识别串符合该文法')
+                    return True
+                elif w not in self.derveDict[curStus].keys():
+                    raise UnaccpetSymbol(curStus, '{}({})'.format(self.token_to_word(), w))
                 else:
-                    self.__guiyue(nS)
+                    nS = self.derveDict[curStus][w]
+                    # 压栈
+                    if isinstance(nS, int):
+                        if isinstance(self.token[1], int):
+                            curWord = self.token_to_word()
+                        else:
+                            curWord = self.token[1]
+                        self.stusStack.append((curWord, nS))
+                        self.__get_next_token()
+                    # 规约
+                    else:
+                        self.__guiyue(nS)
+        except Exception as e:
+            print(e)
 
 
 if __name__ == "__main__":

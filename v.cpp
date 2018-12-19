@@ -6,11 +6,12 @@ int func1(int vv){
 }
 
 int main(){
-	int c,y = (3 + 5) * func1(x);
+	int c,y = (3 + 5) * func1(func1(x));
+	func1(func1(x));
 
 	int num = 0;
 
-	while (y >= 0){
+	while (func1(x) <= func1(c)){
 		if (y > 10){
 			int abc;
 			y = y - 4;
