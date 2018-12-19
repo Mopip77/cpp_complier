@@ -3,7 +3,8 @@ sys.path.append('..')
 import os
 from cifa import CiFa
 from config import *
-from myerror import err1, InvalidSymbol, SEMErr
+from myerror import err1, InvalidSymbol, SEMErr, ReDefined
+from symbolList import FuncList, SymbolItem
 # from tmpvalue import TmpValue
 
 
@@ -17,6 +18,7 @@ class DerveDictGererator(object):
     """
 
     def __init__(self):
+        self.testStack = []
         self.stusNum = 0
         # 外部输入，这里没分离
         # 输入产生式
@@ -267,6 +269,7 @@ class DerveDictGererator(object):
                     return num
  
         curStusNum = self.stusNum
+        self.testStack.append(curStusNum)
         self.stusNum += 1
         self.derveDict[curStusNum] = {}
         self.usedSetDict[curStusNum] = curStusSet
@@ -314,6 +317,7 @@ class DerveDictGererator(object):
                 else:
                     print(curStusNum, guiyueStus, endChar)
                     # os._exit(0)
+        self.testStack.pop()
         return curStusNum
 
     def __expand_css(self, curCssList):
@@ -412,6 +416,11 @@ class SLR(DerveDictGererator):
     def __init__(self):
         super(SLR, self).__init__()
         self.generate()
+        print(1)
+        # while True:
+        #     self.guiyueList
+        #     s = input()
+        #     print(self.derveDict[int(s)])
         self.cifa = CiFa(ALL_STARTSTATUS, ALL_STATUS, ALL_DERVEDICT,
                          ALL_ENDSTATUS, 'v.cpp')
         self.stack = []
@@ -423,30 +432,39 @@ class SLR(DerveDictGererator):
     def __get_next_token(self):
         self.token = self.cifa.get_next_token()
         # 读完
-        if self.token is False:
-            self.token = self.endChar
+        # if self.token is False:
+        #     self.token = self.endChar
 
     def __transCurSymbol(self):
         """
-        变换当前字符 +- -> w0  */ -> w1 运算符 -> i
+        变换当前字符为终极符
         """
         # 标识符常数
         if self.token[0] == 'c':
-            return '常数'
+            return '<常数>'
         elif self.token[0] == 'i':
-            return '函数标识符'
+            if self.token[1].addr is None:
+                return '<未定义标识符>'
+            elif isinstance(self.token[1].addr, FuncList):
+                return '<函数标识符>'
+            else:
+                return '<非函数标识符>'
         # 界符
-        elif self.token[0] == 'p':
+        elif self.token[0] == 'p' or self.token[0] == 'k':
             symbol = self.cifa.symbolList[self.token[0]][self.token[1]]
             if symbol == '+' or symbol == '-':
-                return 'w0'
+                return '<+->'
             elif symbol == '*' or symbol == '/':
-                return 'w1'
-            elif symbol == '(' or symbol == ')':
-                return symbol
+                return '<*/>'
+            elif symbol in ['>=', '<=', '==', '>', '<']:
+                return '<逻辑运算符>'
+            elif symbol in ['int', 'float', 'char', 'bool']:
+                return '<类型>'
             else:
-                raise InvalidSymbol(
-                    self.cifa.symbolList[self.token[0]][self.token[1]])
+                return symbol
+            # else:
+            #     raise InvalidSymbol(
+            #         self.cifa.symbolList[self.token[0]][self.token[1]])
         # 结束符
         elif self.token == self.endChar:
             return self.token
@@ -468,6 +486,18 @@ class SLR(DerveDictGererator):
             self.QT.append((symbol, x, y, b))
             self.SEM.append(b)
 
+    def __excute_lang_action(self, actions):
+        for act in actions:
+            if act == 2:
+                self.cifa.SL.activeSL.curVarCat = 'v'
+            if act == 10:
+                if self.cifa.SL.find(self.token[1].name, 'cur') is not False:
+                    raise ReDefined(self.token[1].name)
+                self.cifa.SL.activeSL.curVarType = self.stack[-1][0]
+            elif act == 8:
+                self.cifa.SL.activeSL.fill_info_and_push_list()
+            
+
     def __guiyue(self, nS):
         """
         规约，同时执行相应的语义动作
@@ -478,30 +508,37 @@ class SLR(DerveDictGererator):
         # action
         try:
             css = self.get_num_chanshenshi(nS[1])
-            if isinstance(css[-1][1], tuple):
-                action = css[-1][1]
-                if action[0] == 'push':
-                    cal_obj = self.stack[-1][0]
-                    self.SEM.append(cal_obj)
-                elif action[0] == 'gen':
-                    symbol = self.stack[-2][0]
-                    self.__generate_qurt(symbol)
-        except:
-            pass
+            if css.__len__() and isinstance(css[-1], tuple):
+                actions = css[-1][1]
+                self.__excute_lang_action(actions)
+        except Exception as e:
+            print(e)
+            os._exit(0)
 
-        self.stack = self.stack[:(-1 * guiyueCount)]
+        if guiyueCount != 0:
+            self.stack = self.stack[:(-1 * guiyueCount)]
         nS = self.derveDict[self.stack[-1][1]][guiyueName]
         self.stack.append((guiyueName, nS))
+
+    def token_to_word(self):
+        if isinstance(self.token[1], int):
+            return self.cifa.symbolList[self.token[0]][self.token[1]]
+        else:
+            return self.token[1].name
 
     def run(self):
         self.stack.append((self.endChar, 0))
         self.__get_next_token()
 
+        # test
+        testStack = []
+
         while True:
             curStus = self.stack[-1][1]
+            # testStack.append(curStus)
 
             w = self.__transCurSymbol()
-            print(w)
+            print(w, self.token_to_word())
 
             if curStus is True:
                 for i in self.QT:
@@ -514,8 +551,11 @@ class SLR(DerveDictGererator):
                 nS = self.derveDict[curStus][w]
                 # 压栈
                 if isinstance(nS, int):
-                    w = self.cifa.symbolList[self.token[0]][self.token[1]]
-                    self.stack.append((w, nS))
+                    if isinstance(self.token[1], int):
+                        wD = self.token_to_word()
+                    else:
+                        wD = self.token[1]
+                    self.stack.append((wD, nS))
                     self.__get_next_token()
                 # 规约
                 else:

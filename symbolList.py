@@ -1,4 +1,4 @@
-
+from myerror import ReDefined
 
 class TmpValue(object):
     def __init__(self):
@@ -102,4 +102,3 @@ class SymbolListSystem(object):
         for param in self.activeSL.symbolList:
             funlist.paramList.append(param)
             funlist.paramNum += 1
-

@@ -27,7 +27,7 @@ class CiFa(AllFA):
         with open(filename, 'r') as f:
             return f.read()
 
-    def add_to_symbol_list(self, Str, identAssign=True):
+    def add_to_symbol_list(self, Str):
         """
         将当前字符串加到表中，返回token
         identAssign 表示标识符是声明False还是赋值True
@@ -46,19 +46,11 @@ class CiFa(AllFA):
                 self.symbolList[c].append(Str)
             return (c, self.symbolList[c].index(Str))
         else:
-            # 标识符有两种情况
-            # 1.声明, 需要检查本代码块是否有重复的声明
-            if identAssign is False:
-                if self.SL.find(Str, 'cur') is not False:
-                    raise ReDefined(Str)
-                return ('i', SymbolItem(Str, None, None, None))
-            # 2.赋值, 需要找到最近的该标识符位置
-            else:
-                si = self.SL.find(Str, 'all')
+            si = self.SL.find(Str, 'all')
             if si is not False:
                 return ('i', si)
             else:
-                raise UnDefined(Str)
+                return ('i', SymbolItem(Str, None, None, None))
 
     def _save_token_to_file(self):
         with open(CiFa.log_path, 'w') as f:
@@ -70,7 +62,7 @@ class CiFa(AllFA):
                 else:
                     f.write('{:<10}{}\n'.format(self.symbolList[name][pos], token))
 
-    def get_next_token(self, identAssign=True):
+    def get_next_token(self):
         """
         返回下一个token串，若识别串读完则返回False,异常抛出到run函数去处理
         """
@@ -79,7 +71,9 @@ class CiFa(AllFA):
         try:
             self.curStus = 1
             value = self.get_next_str()
-            token = self.add_to_symbol_list(value, identAssign=identAssign)
+            token = self.add_to_symbol_list(value)
+            if token[0] == 'i':
+                self.SL.activeSL.activeItem = token[1]
             return token
         except Exception as e:
             raise e
