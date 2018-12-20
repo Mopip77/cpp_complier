@@ -93,6 +93,7 @@ class LRDerveDictGerenator(object):
         tmpStus = 'tmpStus_{}'
         tmpStusReferDict = {}
         _tmpDict = {} # 扩展出来的文法,最后加入self.chanshenshi
+        self._tmpEmptyStus = set() # 可推出空的临时变量,在求first集合的时候需要使用
         for stus in self.chanshenshi:
             for css in self.chanshenshi[stus]:
                 for i in range(0, css.__len__()):
@@ -100,6 +101,8 @@ class LRDerveDictGerenator(object):
                         item = css[i]
                         if not item in tmpStusReferDict:
                             _tmp = tmpStus.format(tmpNum)
+                            if item[0] in self.Vn and [] in self.chanshenshi[item[0]]:
+                                self._tmpEmptyStus.add(_tmp)
                             tmpStusReferDict[item] = _tmp
                             tmpNum += 1
                             _tmpDict[_tmp] = [[item]]
@@ -129,6 +132,11 @@ class LRDerveDictGerenator(object):
         first = {}
         for i in self.Vn:
             first[i] = {'first': set(), 'vn': [], 'empty': False}
+
+        # 为可空临时变量的'empty'属性赋值
+        for emptyStus in self._tmpEmptyStus:
+            first[emptyStus]['empty'] = True
+        del self._tmpEmptyStus
         
         for stus in self.chanshenshi.keys():
             for css in self.chanshenshi[stus]:
@@ -233,7 +241,7 @@ class LRDerveDictGerenator(object):
                                         break
                     # 重置vn集合
                     first[stus]['vn'] = _tmpCssStack
-
+                
         return first
 
     def __get_Vt(self):
