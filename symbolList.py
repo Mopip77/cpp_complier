@@ -4,6 +4,19 @@ class TmpValue(object):
     def __init__(self):
         self.type = None
 
+
+class ArrList(object):
+    def __init__(self):
+        self.levelLenList = []
+        self.len = 0
+
+    def cal_total_len(self):
+        baseNum = 1
+        for _len in self.levelLenList[::-1]:
+            baseNum *= _len
+        self.len = baseNum
+
+
 class FuncList(object):
     def __init__(self):
         self.offset = 2
@@ -14,7 +27,7 @@ class FuncList(object):
 
 
 class SymbolItem(object):
-    def __init__(self, name, _type, cat, addr):
+    def __init__(self, name, _type=None, cat=None, addr=None):
         self.name = name
         self.type = _type
         self.cat = cat
@@ -44,7 +57,9 @@ class SymbolList(object):
         """
         self.activeItem.type = self.curVarType
         self.activeItem.cat = self.curVarCat
-        if self.curVarCat != 'f':
+        if self.curVarCat == 'arr':
+            self.activeItem.addr = ArrList()
+        elif self.curVarCat != 'f':
             self.activeItem.addr = (self.level, self.offset)
             self.offset += self.offsetDict[self.curVarType]
         self.symbolList.append(self.activeItem)
@@ -55,6 +70,20 @@ class SymbolListSystem(object):
         baseLevelSL = SymbolList(0)
         self.levelStack = [baseLevelSL]
         self.activeSL = self.levelStack[-1]
+
+    def new_symbol_item(self, symItem):
+        """
+        由于LR方法需要预读一个token,所以如果是在声明语句中,可能返回外层的变量
+        这里生成一个新的变量并修改活动符号项
+        """
+        # 先查重
+        if self.find(symItem.name, 'cur') is not False:
+            raise ReDefined(symItem.name)
+        if symItem.cat is not None:
+            self.activeSL.activeItem = SymbolItem(symItem.name)
+            return self.activeSL.activeItem
+        else:
+            return symItem
 
     def find(self, name, level):
         """

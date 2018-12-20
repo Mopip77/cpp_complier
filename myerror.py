@@ -4,6 +4,12 @@ class UnaccpetSymbol(Exception):
         super(UnaccpetSymbol, self).__init__(err)
 
 
+class IncorrectParamNum(Exception):
+    def __init__(self, _type, name, needNum, givenNum):
+        err = "[*]参数个数错误...{}{}需要{}个参数,程序却给出{}个参数".format(_type, name, needNum, givenNum)
+        super(IncorrectParamNum, self).__init__(err)
+
+
 class InvalidSymbol(Exception):
     def __init__(self, Char):
         err = "[*]捕获异常,当前字符%s为无效字符" % Char

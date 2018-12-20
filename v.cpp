@@ -1,20 +1,10 @@
-int fun(int n) {
-    int f;
-    if (n==1) {
-        f = 1;
-    }
-    else {
-        f = fun(n-1) * n;
-    }
-    return f;
-}
+int x[2][13];
 
-int main() {
-    float x = 1.1;
-    float y = 2.2;
-    float z = x + y;
-    int a = 4;
-    int b;
-    b = fun(a);
-    return 0;
+int func(int y){
+    int a=x[1][5];
+    return a;
+}
+int main(){
+	x[2][7] = 1;
+	x[x[1][3][4]][1] = x[2][7];
 }

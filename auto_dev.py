@@ -3,8 +3,8 @@ sys.path.append('..')
 import os
 from cifa import CiFa
 from config import *
-from myerror import UnaccpetSymbol, InvalidSymbol, SEMErr, ReDefined
-from symbolList import FuncList, SymbolItem
+from myerror import UnaccpetSymbol, InvalidSymbol, SEMErr, ReDefined, IncorrectParamNum
+from symbolList import FuncList, SymbolItem, ArrList
 
 
 class TempVar(object):
@@ -498,6 +498,8 @@ class LR(LRDerveDictGerenator):
                 return '<未定义标识符>'
             elif isinstance(self.token[1].addr, FuncList):
                 return '<函数标识符>'
+            elif self.token[1].cat == 'arr':
+                return '<数组标识符>'
             else:
                 return '<非函数标识符>'
         # 界符
@@ -541,6 +543,8 @@ class LR(LRDerveDictGerenator):
                 self.cifa.SL.activeSL.curVarCat = 'f'
             elif act == 5:
                 self.cifa.SL.destory_next_level()
+            elif act == 6:
+                self.cifa.SL.activeSL.curVarCat = 'arr'
             elif act == 7:
                 self.cifa.SL.activeSL.curVarType = self.stusStack[-1][0]
                 self.cifa.SL.activeSL.curVarCat = 'vn'
@@ -549,8 +553,11 @@ class LR(LRDerveDictGerenator):
             elif act == 9:
                 self.cifa.SL.fill_param_in_funclist()
             elif act == 10:
-                if self.cifa.SL.find(self.token[1].name, 'cur') is not False:
-                    raise ReDefined(self.token[1].name)
+                self.token = ('i', self.cifa.SL.new_symbol_item(self.token[1]))
+            elif act == 12:
+                self.cifa.SL.activeSL.activeItem.addr.levelLenList.append(self.stusStack[-1][0])
+            elif act == 13:
+                self.cifa.SL.activeSL.activeItem.addr.cal_total_len()
             elif act == 'A':
                 self.SEMStack.append(self.stusStack[-1][0])
             elif act == 'B':
@@ -584,6 +591,20 @@ class LR(LRDerveDictGerenator):
                 qt = MiddleCode(opt, item2, item1, _tmpVar)
                 self.QT.append(qt)
                 self.SEMStack.append(_tmpVar)
+            elif act == 'I':
+                item = self.SEMStack.pop()
+                _tmpStack = [item]
+                while True:
+                    item = self.SEMStack.pop()
+                    _tmpStack.insert(0, item)
+                    if isinstance(item, SymbolItem) and item.cat == 'arr':
+                        break
+                # 数组参数个数分析
+                needNum = item.addr.levelLenList.__len__()
+                givenNum = _tmpStack.__len__() - 1
+                if needNum != givenNum:
+                    raise IncorrectParamNum('数组', item.name, needNum, givenNum)
+                self.SEMStack.append(tuple(_tmpStack))
             elif act == 'K':
                 self.SEMStack.pop()
             elif act == 'L':
