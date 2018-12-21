@@ -1,4 +1,9 @@
-from myerror import ReDefined
+# 两文件嵌套调用,将其挪到这
+class ReDefined(Exception):
+    def __init__(self, Char):
+        err = "[*]语义分析异常,当前标识符'{}'重定义".format(Char)
+        super(ReDefined, self).__init__(err)
+
 
 class TmpValue(object):
     def __init__(self):

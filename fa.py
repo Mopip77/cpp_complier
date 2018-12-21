@@ -1,5 +1,5 @@
 from config import *
-from myerror import *
+from myerror import UnaccpetChar, InvalidSymbol
 
 
 class FA(object):
@@ -66,12 +66,12 @@ class FA(object):
                 return True
             # 不可结束，出错
             else:
-                return False
+                self.my_error()
 
     def my_error(self):
         # 出错，若该符号属于符号表,属于状态不接受字符
         if self.is_vaild_symbol(self.curChar):
-            raise UnaccpetSymbol(self.curStus, self.curChar)
+            raise UnaccpetChar(self.curStus, self.curChar)
         # 无效字符
         else:
             raise InvalidSymbol(self.curChar)
@@ -177,14 +177,12 @@ class AllFA(FA):
         self.curStr = ''
         while True:
             # 找到下一状态
-            nS = super().next_status()
-            # 不匹配下一状态
-            if isinstance(nS, bool):
-                if nS is False:
-                    self.my_error()
-                elif nS is True:
-                    # 结束
-                    return self.curStr
+            nS = self.next_status()
+            
+            # 结束
+            if nS is True:
+                return self.curStr
+            
             # 如果遇到实数状态进入实数状态识别
             if nS == MATH_CONDITION:
                 num = self.MAF.get_next_num(self.curPos, self.curStus)
@@ -193,6 +191,22 @@ class AllFA(FA):
                 self.curChar = self.MAF.curChar
                 self.curStus = self.MAF.curStus
                 return num
+            # 当遇到注释时过滤到换行为止
+            elif nS == COMMENT_CONDITION:
+                self.curStus = 1
+                self.curStr = ''
+                while True:
+                    self.get_next_char()
+                    if self.curChar == '\n':
+                        self.get_next_char()
+                        break
+                    # 注释在最后一行
+                    elif self.curChar == ENDCHAR:
+                        # curStus置成结束符状态33
+                        self.curStus = 33
+                        return ENDCHAR
+                continue
+
             # 将当前字符(非空，非回车换行)加到当前识别的字符串中
             if self.curChar not in [' ', '\n', '\r', '\t']:
                 self.curStr += self.curChar

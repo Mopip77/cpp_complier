@@ -3,7 +3,7 @@ sys.path.append('..')
 import os
 from cifa import CiFa
 from config import *
-from myerror import UnaccpetSymbol, InvalidSymbol, SEMErr, ReDefined, IncorrectParamNum
+from myerror import UnaccpetSymbol, InvalidSymbol, SEMErr, IncorrectParamNum
 from symbolList import FuncList, SymbolItem, ArrList
 
 
@@ -59,7 +59,7 @@ class LRDerveDictGerenator(object):
         self.chanshenshi = WENFA_DICT['chanshenshi']
         self.Vn = WENFA_DICT['vn']
         self.startVn = WENFA_DICT['startVn']
-        self.endChar = WENFA_DICT['endChar']
+        self.endChar = ENDCHAR
         # 加入全局起始状态
         self.topStus = '#S'
         # 生成目标结果
@@ -355,8 +355,9 @@ class LRDerveDictGerenator(object):
                 if endChar not in self.derveDict[curStusNum]:
                     self.derveDict[curStusNum][endChar] = ('r', guiyueStus)
                 else:
+                    pass
                     # 这里出现了4个冲突情况,都是调用函数的时候
-                    print(curStusNum, guiyueStus, endChar)
+                    # print(curStusNum, guiyueStus, endChar)
                     # print(self.testStack)
                     # print('规约移进冲突')
                     # os._exit(0)
@@ -682,7 +683,9 @@ class LR(LRDerveDictGerenator):
                     print('[*]当前识别串符合该文法')
                     return True
                 elif w not in self.derveDict[curStus].keys():
-                    raise UnaccpetSymbol(curStus, '{}({})'.format(self.token_to_word(), w))
+                    firstList = list(self.derveDict[self.stusStack[-1][1]].keys())
+                    raise UnaccpetSymbol(self.stusStack[-1][0], '{}({})'.format(self.token_to_word(), w), \
+                                            firstList)
                 else:
                     nS = self.derveDict[curStus][w]
                     # 压栈

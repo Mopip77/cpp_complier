@@ -1,7 +1,7 @@
 from config import *
 from fa import AllFA
 from symbolList import SymbolListSystem, SymbolItem
-from myerror import ReDefined, UnDefined
+from myerror import UnDefined
 
 class CiFa(AllFA):
     log_path = 'result.txt'
