@@ -5,7 +5,7 @@ int func(int y){
     return a;
 }
 int main(){
-    int x = x + 3;
+    int x = x +1;
 	//x[7][7] = 1;  //你就是个呆瓜
     //int //;//x = 3;
 }

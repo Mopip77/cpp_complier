@@ -623,7 +623,7 @@ class LR(LRDerveDictGerenator):
                 qt = MiddleCode("pe", None, None, None)
                 self.QT.append(qt)
             elif act == 'Q':
-                item = self.SEMStack.pop()
+                item = self.SEMStack[-1]
                 qt = MiddleCode("=", 0, None, item)
                 self.QT.append(qt)
             elif act == 'R':
