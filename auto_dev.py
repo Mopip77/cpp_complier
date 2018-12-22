@@ -510,8 +510,8 @@ class LR(LRDerveDictGerenator):
                 return '<+->'
             elif symbol == '*' or symbol == '/':
                 return '<*/>'
-            elif symbol in ['>=', '<=', '==', '>', '<']:
-                return '<逻辑运算符>'
+            # elif symbol in ['>=', '<=', '==', '>', '<']:
+            #     return '<逻辑运算符>'
             elif symbol in ['int', 'float', 'char', 'bool']:
                 return '<类型>'
             else:
@@ -555,6 +555,11 @@ class LR(LRDerveDictGerenator):
                 self.cifa.SL.fill_param_in_funclist()
             elif act == 10:
                 self.token = ('i', self.cifa.SL.new_symbol_item(self.token[1]))
+            elif act == 11:
+                filename = self.SEMStack.pop()
+                if isinstance(filename, SymbolItem):
+                    filename = filename.name + '.c'
+                    self.cifa.insert_file_content(filename)
             elif act == 12:
                 self.cifa.SL.activeSL.activeItem.addr.levelLenList.append(self.stusStack[-1][0])
             elif act == 13:

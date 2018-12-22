@@ -95,7 +95,8 @@ class MathFa(FA):
         self.sciCount = 0
 
     # 返回符合语法的下一个数字,返回值
-    def get_next_num(self, curPos, curStus):
+    def get_next_num(self, curPos, curStus, checkingStr):
+        self.checkingStr = checkingStr
         self._reload(curPos, curStus)
         while True:
             self._real_num_joint()
@@ -185,7 +186,7 @@ class AllFA(FA):
             
             # 如果遇到实数状态进入实数状态识别
             if nS == MATH_CONDITION:
-                num = self.MAF.get_next_num(self.curPos, self.curStus)
+                num = self.MAF.get_next_num(self.curPos, self.curStus, self.checkingStr)
                 # 同步变量
                 self.curPos = self.MAF.curPos
                 self.curChar = self.MAF.curChar

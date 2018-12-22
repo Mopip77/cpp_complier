@@ -8,7 +8,7 @@ class CiFa(AllFA):
     
 
     def __init__(self, startstatus, status, dervedict, endstatus, filename):
-        checkingStr = self._load_content_from_file(filename) + '#'
+        checkingStr = self._load_content_from_file(filename) + ENDCHAR
         super(CiFa, self).__init__(startstatus, status, dervedict, endstatus,
                                    checkingStr)
         self.symbolList = {
@@ -17,7 +17,7 @@ class CiFa(AllFA):
             'c': [],  # 常数
             'k': k_LIST,  # 关键字
             'p': p_LIST,  # 界符
-            'end': ['#'], # 符号串结束
+            'end': [ENDCHAR], # 符号串结束
         }
         self.guiyueList = GUIYUE_LIST
         self.tokenList = []
@@ -26,6 +26,15 @@ class CiFa(AllFA):
     def _load_content_from_file(self, filename):
         with open(filename, 'r') as f:
             return f.read()
+
+    def insert_file_content(self, filename):
+        with open(filename, 'r') as f:
+            fileContent = f.read()
+        self.checkingStr = self.checkingStr[:self.curPos] + \
+                                fileContent + \
+                                self.checkingStr[self.curPos+1:]
+        self.curPos -= 1
+        self.strLen += len(fileContent)
 
     def add_to_symbol_list(self, Str):
         """
