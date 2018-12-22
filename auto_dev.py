@@ -606,6 +606,10 @@ class LR(LRDerveDictGerenator):
                 if needNum != givenNum:
                     raise IncorrectParamNum('数组', item.name, needNum, givenNum)
                 self.SEMStack.append(tuple(_tmpStack))
+            elif act == 'J':
+                outVar = self.SEMStack.pop()
+                qt = MiddleCode("out", None, None, outVar)
+                self.QT.append(qt)
             elif act == 'K':
                 self.SEMStack.pop()
             elif act == 'L':
