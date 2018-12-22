@@ -477,6 +477,8 @@ class LR(LRDerveDictGerenator):
                          ALL_ENDSTATUS, 'v.cpp')
         self.stusStack = []
         self.token = tuple()
+        # 使用函数参数个数检查, 由于参数能嵌套函数,所以用一个栈
+        self.funcParamCountStack = []
 
         # 四元式
         self.tmpVarFormat = "t{}"
@@ -564,9 +566,16 @@ class LR(LRDerveDictGerenator):
                 self.cifa.SL.activeSL.activeItem.addr.levelLenList.append(self.stusStack[-1][0])
             elif act == 13:
                 self.cifa.SL.activeSL.activeItem.addr.cal_total_len()
+            elif act == 14:
+                self.funcParamCountStack.append(self.SEMStack[-1].addr.paramNum)
             elif act == 'A':
                 self.SEMStack.append(self.stusStack[-1][0])
             elif act == 'B':
+                if self.funcParamCountStack[-1] != 0:
+                    needParamNum = self.SEMStack[-1].addr.paramNum
+                    givenParamNum = needParamNum - self.funcParamCountStack[-1]
+                    raise IncorrectParamNum('函数', self.SEMStack[-1].name, needParamNum, givenParamNum)
+                self.funcParamCountStack.pop()
                 funcItem = self.SEMStack.pop()
                 _tmpVar = get_a_tmp_value()
                 qt = MiddleCode("call", funcItem, None, _tmpVar)
@@ -618,6 +627,7 @@ class LR(LRDerveDictGerenator):
             elif act == 'K':
                 self.SEMStack.pop()
             elif act == 'L':
+                self.funcParamCountStack[-1] -= 1
                 param = self.SEMStack.pop()
                 qt = MiddleCode("param", param, None, None)
                 self.QT.append(qt)
@@ -684,7 +694,7 @@ class LR(LRDerveDictGerenator):
                 #     print(self.stusStack)
 
                 w = self.__transCurSymbol()
-                # print(w, self.token_to_word())
+                print(w, self.token_to_word())
 
                 if curStus is True:
                     for i in self.QT:
