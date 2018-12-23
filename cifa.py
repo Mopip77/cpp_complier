@@ -7,8 +7,8 @@ class CiFa(AllFA):
     log_path = 'result.txt'
     
 
-    def __init__(self, startstatus, status, dervedict, endstatus, filename):
-        checkingStr = self._load_content_from_file(filename) + ENDCHAR
+    def __init__(self, startstatus, status, dervedict, endstatus, checkingStr):
+        checkingStr = checkingStr + ENDCHAR
         super(CiFa, self).__init__(startstatus, status, dervedict, endstatus,
                                    checkingStr)
         self.symbolList = {

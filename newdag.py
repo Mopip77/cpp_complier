@@ -2,6 +2,7 @@ import Digui
 from Digui import TempVar
 from Digui import SymbolItem
 from Digui import MiddleCode
+from auto_dev import *
 
 
 # class SymbolItem(object):
@@ -139,6 +140,9 @@ class Optimizer(object):
         else:
             print("ok")
 
+    def get_result(self):
+        return self.result
+
     def block_codes(self):
         """
         处理分块并在块内部进行优化
@@ -155,10 +159,10 @@ class Optimizer(object):
                     self.deal_temp_type()
                     self.result.append("")
                     self.dag.node_list.clear()
-                    if self.deal_param_overflow() == False:
-                        self.result.clear()
-                        self.result.append("Error:函数参数不匹配")
-                        return False
+                    # if self.deal_param_overflow() == False:
+                    #     self.result.clear()
+                    #     self.result.append("Error:函数参数不匹配")
+                    #     return False
                 else:
                     pass
                 high += 1
@@ -192,6 +196,34 @@ class Optimizer(object):
                             mc2.res = new_res
                         else:
                             pass
+                    for mc2 in self.result:
+                        if isinstance(mc2, str):
+                            continue
+                        if isinstance(mc2.item1, tuple):
+                            temp_list = list(mc2.item1)
+                            tuple_length = len(temp_list)
+                            for i in range(tuple_length):
+                                if temp_list[i] == old_res:
+                                    temp_list[i] = new_res
+                            new_tuple = tuple(temp_list)
+                            mc2.item1 = new_tuple
+                        if isinstance(mc2.item2, tuple):
+                            temp_list = list(mc2.item2)
+                            tuple_length = len(temp_list)
+                            for i in range(tuple_length):
+                                if temp_list[i] == old_res:
+                                    temp_list[i] = new_res
+                            new_tuple = tuple(temp_list)
+                            mc2.item2 = new_tuple
+                        if isinstance(mc2.res, tuple):
+                            temp_list = list(mc2.res)
+                            tuple_length = len(temp_list)
+                            for i in range(tuple_length):
+                                if temp_list[i] == old_res:
+                                    temp_list[i] = new_res
+                            new_tuple = tuple(temp_list)
+                            mc2.res = new_tuple
+
                 else:
                     pass
             else:
@@ -222,7 +254,7 @@ class Optimizer(object):
                 pass
         return True
 
-    def calculation(self, item1, item2, opt):
+    def calculation(self, item1, item2, opt, res):
         temp = item1 + item2 if opt == "+" else 0
         temp = item1 - item2 if opt == "-" else temp
         temp = item1 * item2 if opt == "*" else temp
@@ -232,7 +264,19 @@ class Optimizer(object):
         temp = item1 == item2 if opt == "==" else temp
         temp = item1 >= item2 if opt == ">=" else temp
         temp = item1 <= item2 if opt == "<=" else temp
+        if isinstance(temp, bool):
+            return int(temp)
         return temp
+        # if opt == "+":
+        #     return item1 + item2
+        # elif opt == "-":
+        #     return item1 - item2
+        # elif opt == "*":
+        #     return item1 * item2
+        # elif opt == "/":
+        #     return item1 / item2
+        # else:
+        #     return res
 
     def not_sy_item(self, item):
         if (isinstance(item, int) or
@@ -244,7 +288,8 @@ class Optimizer(object):
 
     def dag_born(self, low, high):
         opts = ["+", "-", "*", "/", ">", "<", "==", ">=", "<="]
-        sp_opts = ["if", "el", "ie", "wh", "do", "we", "pro", "ret", "pe", "param", "call"]
+        logic_opts = [">", "<", "==", ">=", "<="]
+        sp_opts = ["if", "el", "ie", "wh", "do", "we", "pro", "ret", "pe", "param", "call","out"]
 
         # 生成图信息
         while low <= high:
@@ -258,9 +303,14 @@ class Optimizer(object):
                 if self.not_sy_item(mc.item1):
                     self.dag.deal_no_sys_item(number, mc.item1, mc.res)
                 else:
-                    if self.dag.find(mc.item1):
-                        self.dag.delete(mc.res)
-                        self.dag.node_list[self.dag.exist].marks.append(mc.res)
+                    if isinstance(mc.item1, TempVar):
+                        if self.dag.find(mc.item1):
+                            self.dag.delete(mc.res)
+                            self.dag.node_list[self.dag.exist].marks.append(mc.res)
+                        else:
+                            new_node = DAG_Node(number, "=", mc.item1, mc.res)
+                            self.dag.delete(mc.res)
+                            self.dag.node_list.append(new_node)
                     else:
                         new_node = DAG_Node(number, "=", mc.item1, mc.res)
                         self.dag.delete(mc.res)
@@ -268,41 +318,42 @@ class Optimizer(object):
             elif mc.opt in opts:
                 if self.not_sy_item(mc.item1) and self.not_sy_item(mc.item2):
                     # TODO 在此处判断运算式两项是否符合运算规则
-                    temp = self.calculation(mc.item1, mc.item2, mc.opt)
+                    temp = self.calculation(mc.item1, mc.item2, mc.opt, mc.res)
                     self.dag.deal_no_sys_item(number, temp, mc.res)
                 else:
                     # TODO 在此处判断运算式两项是否符合运算规则,如int+float之
-                    if self.dag.find_expr(mc.opt, mc.item1, mc.item2):
-                        self.dag.delete(mc.res)
-                        self.dag.node_list[self.dag.expr].marks.append(mc.res)
+                    # if self.dag.find_expr(mc.opt, mc.item1, mc.item2):
+                    #     self.dag.delete(mc.res)
+                    #     self.dag.node_list[self.dag.expr].marks.append(mc.res)
+                    # else:
+                    if self.dag.find(mc.item1):
+                        left_node_number = self.dag.exist
                     else:
-                        if self.dag.find(mc.item1):
-                            left_node_number = self.dag.exist
-                        else:
-                            new_node = DAG_Node(number, "=", mc.item1)
-                            self.dag.node_list.append(new_node)
-                            left_node_number = number
-                            number += 1
+                        new_node = DAG_Node(number, "=", mc.item1)
+                        self.dag.node_list.append(new_node)
+                        left_node_number = number
+                        number += 1
 
-                        if self.dag.find(mc.item2):
-                            right_node_number = self.dag.exist
-                        else:
-                            new_node = DAG_Node(number, "=", mc.item2)
-                            self.dag.node_list.append(new_node)
-                            right_node_number = number
-                            number += 1
+                    if self.dag.find(mc.item2):
+                        right_node_number = self.dag.exist
+                    else:
+                        new_node = DAG_Node(number, "=", mc.item2)
+                        self.dag.node_list.append(new_node)
+                        right_node_number = number
+                        number += 1
 
-                        if (self.not_sy_item(self.dag.node_list[left_node_number].marks[0]) and
-                                self.not_sy_item(self.dag.node_list[right_node_number].marks[0])):
-                            # TODO 在此处判断运算式两项是否符合运算规则
-                            temp = self.calculation(self.dag.node_list[left_node_number].marks[0],
-                                                    self.dag.node_list[right_node_number].marks[0], mc.opt)
-                            self.dag.deal_no_sys_item(number, temp, mc.res)
-                        else:
-                            new_node = DAG_Node(number, mc.opt, mc.res)
-                            new_node.left_node = left_node_number
-                            new_node.right_node = right_node_number
-                            self.dag.node_list.append(new_node)
+                    if (self.not_sy_item(self.dag.node_list[left_node_number].marks[0]) and
+                            self.not_sy_item(self.dag.node_list[right_node_number].marks[0]) and
+                            1):
+                        # TODO 在此处判断运算式两项是否符合运算规则
+                        temp = self.calculation(self.dag.node_list[left_node_number].marks[0],
+                                                self.dag.node_list[right_node_number].marks[0], mc.opt, mc.res)
+                        self.dag.deal_no_sys_item(number, temp, mc.res)
+                    else:
+                        new_node = DAG_Node(number, mc.opt, mc.res)
+                        new_node.left_node = left_node_number
+                        new_node.right_node = right_node_number
+                        self.dag.node_list.append(new_node)
             elif mc.opt in sp_opts:
                 if mc.opt in ["pro"]:
                     new_node = DAG_Node(number, mc.opt, mc.item1)
@@ -327,6 +378,9 @@ class Optimizer(object):
                     self.dag.node_list.append(new_node)
                 elif mc.opt in ["el", "ie", "wh", "we", "pe"]:
                     new_node = DAG_Node(number, mc.opt)
+                    self.dag.node_list.append(new_node)
+                elif mc.opt == "out":
+                    new_node = DAG_Node(number, mc.opt, mc.res)
                     self.dag.node_list.append(new_node)
 
         # 处理节点顺序
@@ -355,8 +409,8 @@ class Optimizer(object):
                     else:
                         pass
                 for i in range(0, num):
-                    if isinstance(node.marks[i], SymbolItem):
-                        if node.marks[i].cat == "v":
+                    if isinstance(node.marks[i], SymbolItem) or isinstance(node.marks[i], tuple):
+                        if isinstance(node.marks[i], tuple) or node.marks[i].cat == "v":
                             for j in range(0, i):
                                 if isinstance(node.marks[j], SymbolItem):
                                     if node.marks[j].cat == "vn":  # param
@@ -372,9 +426,30 @@ class Optimizer(object):
                         pass
 
     def dag_to_res(self):
+
+        for node in self.dag.node_list:
+            length_of_marks = len(node.marks)
+            for j in range(length_of_marks):
+                item = node.marks[j]
+                if isinstance(item, tuple):
+                    temp_list = list(item)
+                    length = len(item)
+                    for i in range(0, length):
+                        if isinstance(temp_list[i],TempVar):
+                            self.dag.find(temp_list[i])
+                            new_index = self.dag.node_list[self.dag.exist].marks[0]
+                            temp_list[i] = new_index
+                        else:
+                            pass
+                    new_tuple = tuple(temp_list)
+                    node.marks[j] = new_tuple
+
         for node in self.dag.node_list:
             if node.opt == "pro":
                 mc = MiddleCode(node.opt, node.marks[0])
+                self.result.append(mc)
+            elif node.opt == "out":
+                mc = MiddleCode(node.opt, None, None, node.marks[0])
                 self.result.append(mc)
             elif node.opt in ["if", "do", "ret", "param"]:
                 mc = MiddleCode(node.opt, self.dag.node_list[node.left_node].marks[0], None, None)
@@ -385,9 +460,25 @@ class Optimizer(object):
             elif node.opt in ["call"]:
                 mc = MiddleCode(node.opt, self.dag.node_list[node.left_node].marks[0], None, node.marks[0])
                 self.result.append(mc)
+                for m in node.marks[1:]:
+                    if isinstance(m, tuple):
+                        mc = MiddleCode("=", node.marks[0], None, m)
+                        self.result.append(mc)
+                    if not isinstance(m, TempVar) and not isinstance(m, tuple):
+                        if m.cat == "vn":
+                            mc = MiddleCode("=", m, None, node.marks[0])
+                            self.result.append(mc)
+                        else:
+                            mc = MiddleCode("=", node.marks[0], None, m)
+                            self.result.append(mc)
+                    else:
+                        pass
             elif node.opt == "=":
                 for m in node.marks[1:]:
-                    if not isinstance(m, TempVar):
+                    if isinstance(m, tuple):
+                        mc = MiddleCode("=", node.marks[0], None, m)
+                        self.result.append(mc)
+                    if not isinstance(m, TempVar) and not isinstance(m, tuple):
                         if m.cat == "vn":
                             mc = MiddleCode("=", m, None, node.marks[0])
                             self.result.append(mc)
@@ -401,7 +492,10 @@ class Optimizer(object):
                                 self.dag.node_list[node.right_node].marks[0], node.marks[0])
                 self.result.append(mc)
                 for m in node.marks[1:]:
-                    if not isinstance(m, TempVar):
+                    if isinstance(m, tuple):
+                        mc = MiddleCode("=", node.marks[0], None, m)
+                        self.result.append(mc)
+                    if not isinstance(m, TempVar) and not isinstance(m, tuple):
                         if m.cat == "vn":
                             mc = MiddleCode("=", m, None, node.marks[0])
                             self.result.append(mc)
@@ -413,9 +507,14 @@ class Optimizer(object):
 
 
 if __name__ == '__main__':
-    d = Digui.Recursion()
-    d.parser()
-    mid_codes = d.getRes()
+    v = LR()
+    with open("v.cpp", "r") as f:
+        code = f.read()
+    mid_codes = v.analyse(code)
     o = Optimizer()
     o.load_mid_codes(mid_codes)
     o.run()
+    for m in o.result:
+        if m == "":
+            continue
+        print(m)

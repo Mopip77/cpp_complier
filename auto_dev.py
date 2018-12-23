@@ -30,21 +30,45 @@ class MiddleCode(object):
         self.item2 = item2
         self.res = res
 
+    def deal_tuple(self, atuple):
+        astr = "%s[" % (atuple[0].name)
+        num = len(atuple)
+        for i in range(1, num):
+            if isinstance(atuple[i], tuple):
+                self.deal_tuple(atuple[i])
+                astr += self.deal_tuple(atuple[i])
+                astr += "["
+            elif isinstance(atuple[i], SymbolItem):
+                astr += "%s][" % str(atuple[i].name)
+            else:
+                astr += "%s][" % str(atuple[i])
+        astr = astr[:-1]
+        return astr
+
     # for test
     def __str__(self):
         if isinstance(self.item1, SymbolItem) or isinstance(self.item1, TempVar):
             item1 = self.item1.name
+        elif isinstance(self.item1, tuple):
+            item1 = self.deal_tuple(self.item1)
         else:
             item1 = self.item1
+
         if isinstance(self.item2, SymbolItem) or isinstance(self.item2, TempVar):
             item2 = self.item2.name
+        elif isinstance(self.item2, tuple):
+            item2 = self.deal_tuple(self.item2)
         else:
             item2 = self.item2
+
         if isinstance(self.res, SymbolItem) or isinstance(self.res, TempVar):
             res = self.res.name
+        elif isinstance(self.res, tuple):
+            res = self.deal_tuple(self.res)
         else:
             res = self.res
-        return "%s %s %s %s" % (self.opt, item1, item2, res)
+        ret = "%s %s %s %s" % (self.opt, item1, item2, res)
+        return ret.replace("None", "_")
 
 
 class LRDerveDictGerenator(object):
@@ -473,8 +497,7 @@ class LR(LRDerveDictGerenator):
         #     self.guiyueList
         #     s = input()
         #     print(self.derveDict[int(s)])
-        self.cifa = CiFa(ALL_STARTSTATUS, ALL_STATUS, ALL_DERVEDICT,
-                         ALL_ENDSTATUS, 'v.cpp')
+
         self.stusStack = []
         self.token = tuple()
         # 使用函数参数个数检查, 由于参数能嵌套函数,所以用一个栈
@@ -683,45 +706,59 @@ class LR(LRDerveDictGerenator):
             return self.token[1].name
 
     def run(self):
-        try:
-            self.stusStack.append((self.endChar, 0))
-            self.__get_next_token()
+        self.stusStack.append((self.endChar, 0))
+        self.__get_next_token()
 
-            while True:
-                curStus = self.stusStack[-1][1]
-                # if curStus in [58, 60, 101, 140]:
-                #     print('bad...')
-                #     print(self.stusStack)
+        while True:
+            curStus = self.stusStack[-1][1]
+            # if curStus in [58, 60, 101, 140]:
+            #     print('bad...')
+            #     print(self.stusStack)
 
-                w = self.__transCurSymbol()
-                print(w, self.token_to_word())
+            w = self.__transCurSymbol()
+            print(w, self.token_to_word())
 
-                if curStus is True:
-                    for i in self.QT:
-                        print(i)
-                    print('[*]当前识别串符合该文法')
-                    return True
-                elif w not in self.derveDict[curStus].keys():
-                    firstList = list(self.derveDict[self.stusStack[-1][1]].keys())
-                    raise UnaccpetSymbol(self.stusStack[-1][0], '{}({})'.format(self.token_to_word(), w), \
-                                            firstList)
-                else:
-                    nS = self.derveDict[curStus][w]
-                    # 压栈
-                    if isinstance(nS, int):
-                        if isinstance(self.token[1], int):
-                            curWord = self.token_to_word()
-                        else:
-                            curWord = self.token[1]
-                        self.stusStack.append((curWord, nS))
-                        self.__get_next_token()
-                    # 规约
+            if curStus is True:
+                for i in self.QT:
+                    print(i)
+                print('[*]当前识别串符合该文法')
+                return True
+            elif w not in self.derveDict[curStus].keys():
+                firstList = list(self.derveDict[self.stusStack[-1][1]].keys())
+                raise UnaccpetSymbol(self.stusStack[-1][0], '{}({})'.format(self.token_to_word(), w), \
+                                     firstList)
+            else:
+                nS = self.derveDict[curStus][w]
+                # 压栈
+                if isinstance(nS, int):
+                    if isinstance(self.token[1], int):
+                        curWord = self.token_to_word()
                     else:
-                        self.__guiyue(nS)
-        except Exception as e:
-            print(e)
+                        curWord = self.token[1]
+                    self.stusStack.append((curWord, nS))
+                    self.__get_next_token()
+                # 规约
+                else:
+                    self.__guiyue(nS)
+
+    def analyse(self, checkingStr):
+        self.stusStack = []
+        self.token = tuple()
+        self.funcParamCountStack = []
+        self.tmpVarFormat = "t{}"
+        self.tmpNum = 1
+        self.SEMStack = []
+        self.QT = []
+        self.cifa = CiFa(ALL_STARTSTATUS, ALL_STATUS, ALL_DERVEDICT,
+                         ALL_ENDSTATUS, checkingStr)
+        self.run()
+        print("ok")
+        return self.QT
 
 
 if __name__ == "__main__":
+    with open("v.cpp","r") as f:
+        code = f.read()
+
     v = LR()
-    v.run()
+    v.analyse(code)
